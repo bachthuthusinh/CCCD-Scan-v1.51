@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<!-- Quét QR Căn cước — © 2026 Thanh Nguyen. Bảo lưu mọi quyền. -->
+<meta name="author" content="Thanh Nguyen">
+<meta name="copyright" content="© 2026 Thanh Nguyen">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f5132">
+<title>Quét QR CCCD</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<script src="config.js"></script>
+<script src="vendor/html5-qrcode.min.js"></script>
+<script src="vendor/jsQR.js"></script>
+<script src="scanner.js"></script>
+<style>
+:root{
+  --bg:#f4f6f5; --card:#ffffff; --ink:#18201c; --muted:#5f6b65; --line:#dfe5e2;
+  --brand:#0f6b45; --brand-ink:#ffffff; --brand-soft:#e3f2ea;
+  --warn:#9a5b00; --warn-soft:#fff3dc; --err:#b42318; --err-soft:#fde8e6;
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1412; --card:#172019; --ink:#e7eeea; --muted:#9aa8a1; --line:#29352e;
+    --brand:#3fb47c; --brand-ink:#08130d; --brand-soft:#1c3327;
+    --warn:#f2b24c; --warn-soft:#33270f; --err:#ff8a7a; --err-soft:#3a1915;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--brand);color:var(--brand-ink);
+  padding:12px 16px calc(12px) ;padding-top:calc(12px + env(safe-area-inset-top))}
+header .row{max-width:720px;margin:0 auto;display:flex;align-items:center;gap:10px}
+header h1{font-size:17px;margin:0;flex:1;font-weight:650;letter-spacing:.2px}
+header .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.18)}
+main{overflow-x:hidden;max-width:720px;margin:0 auto;padding:14px 16px 90px}
+.tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:14px}
+.tabs button{flex:1;border:0;background:transparent;color:var(--muted);padding:9px 6px;border-radius:999px;font:inherit;font-weight:600;cursor:pointer}
+.tabs button.on{background:var(--brand);color:var(--brand-ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px;font-weight:650}
+.hide{display:none!important}
+#reader{position:relative;width:100%;aspect-ratio:1/1;max-height:62vh;border-radius:12px;overflow:hidden;background:#000;touch-action:manipulation}
+#reader video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:50% 50%}
+#reader .idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#cfd8d3;font-size:14px;text-align:center;padding:24px}
+.guide{position:absolute;left:50%;top:50%;width:58%;aspect-ratio:1/1;transform:translate(-50%,-50%);border-radius:10px;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.45);pointer-events:none;transition:box-shadow .2s}
+.guide::before,.guide::after,.guide i::before,.guide i::after{content:"";position:absolute;width:26px;height:26px;border:4px solid #fff;border-radius:4px}
+.guide::before{left:-3px;top:-3px;border-right:0;border-bottom:0}
+.guide::after{right:-3px;top:-3px;border-left:0;border-bottom:0}
+.guide i::before{left:-3px;bottom:-3px;border-right:0;border-top:0}
+.guide i::after{right:-3px;bottom:-3px;border-left:0;border-top:0}
+.guide.ok::before,.guide.ok::after,.guide.ok i::before,.guide.ok i::after{border-color:#5be39a}
+.guide.blur::before,.guide.blur::after,.guide.blur i::before,.guide.blur i::after{border-color:#ffc04d}
+.guide .scanline{position:absolute;left:6%;right:6%;height:2px;background:#5be39a;box-shadow:0 0 8px #5be39a;animation:sl 1.8s ease-in-out infinite;opacity:.8}
+@keyframes sl{0%,100%{top:8%}50%{top:92%}}
+.camstatus{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;font-size:13px;font-weight:600;
+  padding:5px 12px;border-radius:999px;white-space:nowrap;max-width:calc(100% - 20px);overflow:hidden;text-overflow:ellipsis}
+.camstatus.warn{background:rgba(154,91,0,.85)}
+.caminfo{position:absolute;right:8px;bottom:8px;color:#fff;font-size:11px;opacity:.7;background:rgba(0,0,0,.4);padding:2px 6px;border-radius:6px}
+.focusring{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;border:2px solid #ffd54d;border-radius:50%;pointer-events:none;animation:fr .8s ease-out forwards}
+@keyframes fr{from{transform:scale(1.6);opacity:1}to{transform:scale(1);opacity:0}}
+.camtools{display:flex;align-items:center;gap:8px;margin-top:10px}
+.camtools .zoomv{min-width:44px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.camtools input[type=range]{flex:1;accent-color:var(--brand);height:32px}
+.iconbtn{width:44px;height:44px;flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font:inherit;font-size:18px;font-weight:700;cursor:pointer}
+.iconbtn.on{background:#ffd54d;border-color:#ffd54d;color:#3a2a00}
+select.cam{flex:1;min-width:0;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;min-height:44px}
+.tips{margin:10px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}
+.tips li{margin:2px 0}
+.progress{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
+.progress>div{height:100%;width:0;background:var(--brand);transition:width .15s}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+button.b{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 14px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+button.b.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+button.b.ghost{background:transparent}
+button.b.danger{color:var(--err)}
+button.b:disabled{opacity:.5;cursor:not-allowed}
+.grow{flex:1}
+label.f{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input.t,textarea.t,select.t{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+textarea.t{min-height:110px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.fields{display:grid;grid-template-columns:1fr;gap:0}
+.field{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field .k{width:120px;flex:none;color:var(--muted);font-size:13px}
+.field .v{flex:1;font-weight:600;word-break:break-word}
+.field .v.in{width:0;resize:none;border:1px solid transparent;background:transparent;color:var(--ink);font:inherit;font-weight:600;padding:4px 6px;border-radius:6px;min-width:0}
+.field .v.in:focus{border-color:var(--line);background:var(--bg);outline:none}
+.copy{border:0;background:var(--brand-soft);color:var(--brand);border-radius:8px;padding:6px 10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;flex:none}
+.raw{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--muted);word-break:break-all;background:var(--bg);border-radius:8px;padding:8px;margin-top:8px}
+.note{font-size:13px;color:var(--muted);margin:6px 0 0}
+.pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-weight:600}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.err{background:var(--err-soft);color:var(--err)}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.hist li:last-child{border-bottom:0}
+.hist .m{flex:1;min-width:0}
+.hist .n{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist .s{font-size:12px;color:var(--muted)}
+.copyright{text-align:center;font-size:12px;color:var(--muted);padding:6px 0 4px}
+.empty{color:var(--muted);text-align:center;padding:18px 0}
+.switch{display:flex;align-items:center;gap:10px;margin-top:12px}
+.switch input{width:20px;height:20px;accent-color:var(--brand)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;opacity:0;transition:.2s;pointer-events:none;max-width:calc(100% - 32px);text-align:center;z-index:20}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:420px){ .field .k{width:96px} }
+</style>
+</head>
+<body>
+<header><div class="row">
+  <h1>Quét QR Căn cước <small id="appVer" style="font-weight:500;opacity:.7;font-size:12px"></small></h1>
+  <span class="badge" id="sheetBadge">Chưa nối Sheet</span>
+</div></header>
+
+<main>
+  <nav class="tabs" role="tablist">
+    <button data-tab="scan" class="on">Quét</button>
+    <button data-tab="paste">Dán tay</button>
+    <button data-tab="history">Lịch sử</button>
+    <button data-tab="settings">Cài đặt</button>
+  </nav>
+
+  <!-- QUÉT -->
+  <section id="tab-scan">
+    <div class="card">
+      <div id="reader">
+        <video id="camVideo" playsinline muted autoplay></video>
+        <div class="idle" id="camIdle">Bấm “Bật camera” để quét mã QR trên thẻ CCCD</div>
+        <div class="guide hide" id="guide"><i></i><div class="scanline"></div></div>
+        <div class="camstatus hide" id="camStatus">Đang tìm mã QR…</div>
+        <div class="caminfo hide" id="camInfo"></div>
+      </div>
+
+      <div class="camtools hide" id="camTools">
+        <button class="iconbtn" id="zoomOut" aria-label="Thu nhỏ">−</button>
+        <input type="range" id="zoom" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
+        <button class="iconbtn" id="zoomIn" aria-label="Phóng to">+</button>
+        <span class="zoomv" id="zoomVal">1.0×</span>
+        <button class="iconbtn hide" id="btnTorch" aria-label="Đèn flash" title="Đèn flash">⚡</button>
+      </div>
+      <div class="camtools hide" id="camTools2">
+        <select class="cam" id="camSelect" aria-label="Chọn camera"></select>
+      </div>
+
+      <div class="btns">
+        <button class="b primary grow" id="btnStart">Bật camera</button>
+        <button class="b hide grow" id="btnStop">Dừng</button>
+        <button class="b hide" id="btnShot" title="Chụp ảnh độ phân giải tối đa rồi quét kỹ">Chụp nét</button>
+      </div>
+      <div class="btns">
+        <button class="b grow" id="btnCapture">Chụp bằng camera máy</button>
+        <button class="b grow" id="btnFile">Chọn ảnh có sẵn</button>
+        <input type="file" id="fileInput" accept="image/*" class="hide">
+        <input type="file" id="captureInput" accept="image/*" capture="environment" class="hide">
+      </div>
+      <div class="progress hide" id="imgProgress"><div></div></div>
+      <ul class="tips">
+        <li><b>Đừng áp sát:</b> giữ điện thoại cách thẻ ~20 cm rồi <b>phóng to 2–3×</b> — camera không lấy nét được khi quá gần.</li>
+        <li><b>Chạm vào màn hình</b> chỗ mã QR để lấy nét lại. Khung chuyển vàng nghĩa là ảnh đang mờ.</li>
+        <li>Nghiêng thẻ nhẹ để tránh <b>loá</b> trên lớp phủ; bật đèn ⚡ khi tối.</li>
+        <li>Vẫn khó? Dùng <b>Chụp bằng camera máy</b> — app camera gốc lấy nét tốt hơn, ứng dụng sẽ tự tìm mã trong ảnh.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- DÁN TAY -->
+  <section id="tab-paste" class="hide">
+    <div class="card">
+      <h2>Dán nội dung</h2>
+      <textarea class="t" id="pasteBox" placeholder="Dán chuỗi QR, ví dụ:&#10;001099012345|123456789|Nguyễn Văn A|01011999|Nam|Số 1 Đường A, Phường B, TP C|15082021&#10;&#10;Có thể dán nhiều dòng — mỗi dòng một người."></textarea>
+      <div class="btns">
+        <button class="b" id="btnPasteClip">Dán từ bộ nhớ</button>
+        <button class="b primary grow" id="btnParse">Phân tích</button>
+      </div>
+      <p class="note">Nếu nội dung không đúng định dạng QR CCCD, ứng dụng vẫn lưu nguyên văn vào cột “Dữ liệu gốc”.</p>
+    </div>
+  </section>
+
+  <!-- KẾT QUẢ (dùng chung cho Quét & Dán tay) -->
+  <section id="result" class="hide">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <h2 style="margin:0;flex:1">Kết quả</h2>
+        <span class="pill" id="resultPill">CCCD</span>
+      </div>
+      <div class="fields" id="fields"></div>
+      <div class="raw" id="rawView"></div>
+      <div class="btns">
+        <button class="b" id="btnCopyRow">Copy dòng (dán vào Sheet)</button>
+        <button class="b" id="btnCopyText">Copy văn bản</button>
+        <button class="b" id="btnCopyRaw">Copy chuỗi gốc</button>
+      </div>
+      <div class="btns">
+        <button class="b primary grow" id="btnSave">Lưu vào Google Sheet</button>
+        <button class="b ghost" id="btnNext">Quét tiếp</button>
+      </div>
+      <p class="note" id="saveNote"></p>
+    </div>
+  </section>
+
+  <!-- KẾT QUẢ NHIỀU DÒNG -->
+  <section id="multi" class="hide">
+    <div class="card">
+      <h2 id="multiTitle">Nhiều bản ghi</h2>
+      <ul class="hist" id="multiList"></ul>
+      <div class="btns">
+        <button class="b" id="btnMultiCopy">Copy tất cả (dán vào Sheet)</button>
+        <button class="b primary grow" id="btnMultiSave">Lưu tất cả vào Sheet</button>
+      </div>
+      <p class="note" id="multiNote"></p>
+    </div>
+  </section>
+
+  <!-- LỊCH SỬ -->
+  <section id="tab-history" class="hide">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <h2 style="margin:0;flex:1">Đã quét trên máy này</h2>
+        <span class="pill" id="histCount">0</span>
+      </div>
+      <ul class="hist" id="histList"></ul>
+      <div class="btns">
+        <button class="b" id="btnHistCopy">Copy tất cả</button>
+        <button class="b" id="btnHistCsv">Tải CSV</button>
+        <button class="b" id="btnHistResend">Gửi lại mục chưa lưu</button>
+        <button class="b danger" id="btnHistClear">Xoá lịch sử</button>
+      </div>
+      <p class="note">Lịch sử chỉ lưu trên trình duyệt của máy này.</p>
+    </div>
+  </section>
+
+  <!-- CÀI ĐẶT -->
+  <section id="tab-settings" class="hide">
+    <div class="card">
+      <h2>Cài đặt</h2>
+      <div class="field" style="border:0;padding-top:0">
+        <span class="k">Google Sheet</span>
+        <span class="v" id="sheetState" style="font-weight:600">…</span>
+      </div>
+      <label class="f" for="camRes">Độ phân giải camera</label>
+      <select class="t" id="camRes">
+        <option value="1080">1080p — nhanh, máy yếu</option>
+        <option value="1440">1440p — cân bằng (khuyên dùng)</option>
+        <option value="2160">4K — nét nhất, cần máy mạnh</option>
+      </select>
+      <label class="switch"><input type="checkbox" id="autoSave"> Tự động lưu vào Sheet sau khi quét</label>
+      <label class="switch"><input type="checkbox" id="beep" checked> Rung / bíp khi quét được</label>
+      <label class="switch"><input type="checkbox" id="dupWarn" checked> Cảnh báo khi quét trùng số CCCD</label>
+      <div class="btns">
+        <button class="b primary grow" id="btnSaveSettings">Lưu cài đặt</button>
+        <button class="b" id="btnTest">Kiểm tra kết nối</button>
+      </div>
+      <p class="note" id="testNote"></p>
+    </div>
+    <div class="card">
+      <h2>Chẩn đoán</h2>
+      <p class="note" style="margin-top:0">Nếu không quét được: bật camera thử quét 15–20 giây (hoặc quét 1 ảnh), quay lại đây bấm <b>Copy chẩn đoán</b> rồi gửi cho người hỗ trợ. Nội dung không chứa dữ liệu CCCD.</p>
+      <pre class="raw" id="diagOut" style="white-space:pre-wrap;max-height:320px;overflow:auto;margin-top:10px">Bấm “Làm mới” để xem.</pre>
+      <div class="btns">
+        <button class="b" id="btnDiag">Làm mới</button>
+        <button class="b primary grow" id="btnDiagCopy">Copy chẩn đoán</button>
+      </div>
+    </div>
+  </section>
+  <footer class="copyright">© 2026 <b>Thanh Nguyen</b>. Bảo lưu mọi quyền.</footer>
+</main>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Cấu hình & lưu trữ ---------- */
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const settings = Object.assign({ autoSave:false, beep:true, dupWarn:true, res:'1440', camId:'', zoom:null }, LS.get('cccd.settings', {}));
+delete settings.url; delete settings.token; delete settings.tab; // bỏ cấu hình cũ (bản trước cho nhập tay)
+let history = LS.get('cccd.history', []);
+
+/* ---------- Google Sheet cố định trong config.js ---------- */
+const CFG = window.CCCD_CONFIG || {};
+const SHEET_URL = /^https:\/\/script\.google\.com\/(macros|a\/macros\/[\w.-]+)\/s\/[\w-]+\/exec$/.test((CFG.SHEET_URL || '').trim()) ? CFG.SHEET_URL.trim() : '';
+const SHEET_KEY = CFG.SHEET_KEY && !/^DAN_/.test(CFG.SHEET_KEY) ? CFG.SHEET_KEY : '';
+const SHEET_ON = !!SHEET_URL;
+const saveHistory = () => LS.set('cccd.history', history);
+
+const $ = id => document.getElementById(id);
+const toast = (msg, ms=1800) => { const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), ms); };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- Phân tích chuỗi QR CCCD ----------
+   Định dạng phổ biến (phân tách bằng "|"):
+   Số CCCD | Số CMND cũ | Họ tên | Ngày sinh (ddmmyyyy) | Giới tính | Nơi thường trú | Ngày cấp (ddmmyyyy)
+   Thẻ mới có thể có thêm trường phía sau → giữ ở "Thông tin thêm". */
+const FIELDS = [
+  ['cccd','Số CCCD'], ['cmnd','Số CMND cũ'], ['hoTen','Họ và tên'], ['ngaySinh','Ngày sinh'],
+  ['gioiTinh','Giới tính'], ['diaChi','Nơi thường trú'], ['ngayCap','Ngày cấp'], ['khac','Thông tin thêm']
+];
+const fmtDate = s => {
+  s = (s||'').trim();
+  if (/^\d{8}$/.test(s)) return `${s.slice(0,2)}/${s.slice(2,4)}/${s.slice(4)}`;
+  return s;
+};
+function parseCCCD(raw){
+  const text = String(raw||'').replace(/\r/g,'').trim();
+  const parts = text.split('|').map(p => p.trim());
+  const isCCCD = parts.length >= 6 && /^\d{12}$/.test(parts[0]);
+  if (!isCCCD) return { ok:false, raw:text, data:{ cccd:'', cmnd:'', hoTen:'', ngaySinh:'', gioiTinh:'', diaChi:'', ngayCap:'', khac:'' } };
+  return {
+    ok:true, raw:text,
+    data:{
+      cccd: parts[0], cmnd: parts[1]||'', hoTen: parts[2]||'',
+      ngaySinh: fmtDate(parts[3]), gioiTinh: parts[4]||'', diaChi: parts[5]||'',
+      ngayCap: fmtDate(parts[6]), khac: parts.slice(7).filter(Boolean).join(' | ')
+    }
+  };
+}
+const nowStr = () => {
+  const d = new Date(), p = n => String(n).padStart(2,'0');
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
+const HEADERS = ['Thời gian quét', ...FIELDS.map(f=>f[1]), 'Dữ liệu gốc', 'Nguồn'];
+const toRow = rec => [rec.time, ...FIELDS.map(f => rec.data[f[0]] || ''), rec.raw, rec.source];
+// Thêm dấu ' trước các số để Google Sheet không làm mất số 0 đầu khi dán
+const cellForPaste = (v, i) => {
+  v = String(v ?? '').replace(/[\t\n]/g,' ');
+  return (i === 1 || i === 2) && /^\d+$/.test(v) ? "'" + v : v;
+};
+const rowTSV = rec => toRow(rec).map(cellForPaste).join('\t');
+
+/* ---------- Clipboard ---------- */
+async function copy(text, label='Đã copy'){
+  try{
+    if (navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); }
+    else {
+      const ta = document.createElement('textarea'); ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    toast(label);
+  }catch(e){ toast('Không copy được — hãy chọn và copy thủ công'); }
+}
+
+/* ---------- Google Sheet ---------- */
+function updateBadge(){
+  $('sheetBadge').textContent = SHEET_ON ? 'Đã nối Sheet' : 'Chưa cấu hình Sheet';
+  if ($('sheetState')) $('sheetState').textContent = SHEET_ON ? 'Đã kết nối sẵn' : 'Chưa cấu hình (liên hệ quản trị)';
+  $('autoSave').disabled = !SHEET_ON;
+}
+async function sendToSheet(records){
+  if (!SHEET_ON) throw new Error('Ứng dụng chưa được cấu hình Google Sheet — liên hệ quản trị');
+  const body = JSON.stringify({ token: SHEET_KEY, rows: records.map(toRow) });
+  try{
+    // text/plain để tránh preflight CORS với Apps Script
+    const res = await fetch(SHEET_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body, redirect:'follow' });
+    const txt = await res.text();
+    let j; try{ j = JSON.parse(txt); }catch(e){ throw new Error('Phản hồi không hợp lệ — kiểm tra lại quyền truy cập Web App ("Bất kỳ ai")'); }
+    if (!j.ok) throw new Error(j.error || 'Apps Script báo lỗi');
+    return j;
+  }catch(e){
+    if (e instanceof TypeError){
+      // Một số trình duyệt chặn đọc phản hồi; gửi ở chế độ no-cors (không xác nhận được kết quả)
+      await fetch(SHEET_URL, { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body });
+      return { ok:true, unconfirmed:true };
+    }
+    throw e;
+  }
+}
+
+/* ---------- Trạng thái kết quả ---------- */
+let current = null; // bản ghi đang hiển thị
+function makeRecord(raw, source){
+  const p = parseCCCD(raw);
+  return { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), time: nowStr(), raw: p.raw, ok: p.ok, data: p.data, source, saved:false };
+}
+function addToHistory(rec){
+  history.unshift(rec); if (history.length > 1000) history.length = 1000; saveHistory(); renderHistory();
+}
+function isDuplicate(rec){ return rec.ok && history.some(h => h.id !== rec.id && h.ok && h.data.cccd === rec.data.cccd); }
+
+function showResult(rec){
+  current = rec;
+  $('multi').classList.add('hide');
+  $('result').classList.remove('hide');
+  const pill = $('resultPill');
+  if (!rec.ok){ pill.textContent = 'Không phải QR CCCD'; pill.className = 'pill warn'; }
+  else if (settings.dupWarn && isDuplicate(rec)){ pill.textContent = 'Đã quét trước đó'; pill.className = 'pill warn'; }
+  else { pill.textContent = 'CCCD hợp lệ'; pill.className = 'pill'; }
+
+  const f = $('fields'); f.innerHTML = '';
+  FIELDS.forEach(([k,label]) => {
+    if (k === 'khac' && !rec.data.khac) return;
+    if (!rec.ok && k !== 'cccd' && k !== 'hoTen') return;
+    const row = document.createElement('div'); row.className = 'field';
+    const long = k === 'diaChi' || k === 'khac';
+    row.innerHTML = `<span class="k">${esc(label)}</span>` +
+      (long ? `<textarea class="v in" rows="2" data-k="${k}" aria-label="${esc(label)}"></textarea>`
+            : `<input class="v in" data-k="${k}" aria-label="${esc(label)}">`) +
+      `<button class="copy" type="button">Copy</button>`;
+    const inp = row.querySelector('.v'); inp.value = rec.data[k] || '';
+    inp.addEventListener('input', e => { rec.data[k] = e.target.value; persist(rec); });
+    row.querySelector('button').addEventListener('click', () => copy(inp.value, `Đã copy ${label.toLowerCase()}`));
+    f.appendChild(row);
+    if (long){ const fit = () => { inp.style.height = 'auto'; inp.style.height = inp.scrollHeight + 2 + 'px'; }; fit(); inp.addEventListener('input', fit); }
+  });
+  $('rawView').textContent = rec.raw;
+  updateSaveNote(rec);
+  $('result').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function persist(rec){ const i = history.findIndex(h => h.id === rec.id); if (i >= 0){ history[i] = rec; saveHistory(); renderHistory(); } }
+function updateSaveNote(rec){
+  const n = $('saveNote'), b = $('btnSave');
+  if (rec.saved){ n.innerHTML = '<span class="pill">Đã lưu vào Sheet</span>' + (rec.unconfirmed ? ' (không xác nhận được phản hồi)' : ''); b.textContent = 'Lưu lại lần nữa'; }
+  else { n.textContent = SHEET_ON ? '' : 'Chưa cấu hình Google Sheet — dùng nút Copy để lấy dữ liệu.'; b.textContent = 'Lưu vào Google Sheet'; }
+}
+async function saveCurrent(){
+  if (!current) return;
+  const b = $('btnSave'); b.disabled = true; b.textContent = 'Đang lưu…';
+  try{
+    const r = await sendToSheet([current]);
+    current.saved = true; current.unconfirmed = !!r.unconfirmed; persist(current);
+    toast(r.unconfirmed ? 'Đã gửi (không xác nhận được)' : 'Đã lưu vào Google Sheet');
+  }catch(e){ toast(e.message, 3500); $('saveNote').innerHTML = `<span class="pill err">Lỗi</span> ${esc(e.message)}`; }
+  b.disabled = false; if (current.saved) updateSaveNote(current); else b.textContent = 'Lưu vào Google Sheet';
+}
+
+function feedback(){
+  if (!settings.beep) return;
+  try{ navigator.vibrate && navigator.vibrate(80); }catch(e){}
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 1100; g.gain.value = .08; o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + .12); o.onended = () => ctx.close();
+  }catch(e){}
+}
+
+async function handleScan(text, source){
+  const rec = makeRecord(text, source);
+  feedback();
+  addToHistory(rec);
+  showResult(rec);
+  if (settings.autoSave && SHEET_ON && rec.ok) await saveCurrent();
+}
+
+/* ---------- Camera ---------- */
+let live = null, camOn = false;
+const STATUS = {
+  ok:        ['Đang tìm mã QR…', ''],
+  blur:      ['Ảnh hơi mờ — giữ yên tay', 'warn'],
+  'blur-long': ['Mờ — lùi xa ~20 cm, phóng to, chạm để lấy nét', 'warn']
+};
+function setStatus(kind){
+  const [txt, cls] = STATUS[kind] || STATUS.ok;
+  const el = $('camStatus'); el.textContent = txt; el.className = 'camstatus' + (cls ? ' ' + cls : '');
+  $('guide').classList.toggle('blur', kind !== 'ok'); $('guide').classList.toggle('ok', kind === 'ok');
+}
+function getLive(){
+  if (!live){
+    live = new QRScan.LiveScanner({
+      video: $('camVideo'), guide: $('guide'),
+      onResult: async text => { await stopCam(); handleScan(text, 'Camera'); },
+      onStatus: k => setStatus(k),
+      onCaps: c => {
+        const z = $('zoom'); z.min = c.zoom.min; z.max = c.zoom.max; z.step = c.zoom.step; z.value = c.zoomValue;
+        $('zoomVal').textContent = (+c.zoomValue).toFixed(1) + '×';
+        $('btnTorch').classList.toggle('hide', !c.torch); $('btnTorch').classList.remove('on');
+        $('btnShot').classList.toggle('hide', !c.photo);
+        $('camInfo').textContent = `${c.width}×${c.height}${c.zoom.hw ? '' : ' · zoom số'}`;
+        if (c.deviceId){ settings.camId = c.deviceId; }
+      }
+    });
+  }
+  return live;
+}
+async function fillCameras(){
+  const sel = $('camSelect'), cams = await getLive().cameras();
+  if (cams.length < 2){ $('camTools2').classList.add('hide'); return; }
+  sel.innerHTML = cams.map((c, i) => `<option value="${esc(c.deviceId)}">${esc(c.label || ('Camera ' + (i + 1)))}</option>`).join('');
+  if (settings.camId) sel.value = settings.camId;
+  $('camTools2').classList.remove('hide');
+}
+async function startCam(deviceId){
+  if (!window.QRScan){ toast('Không tải được bộ quét', 3000); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ toast('Trình duyệt không hỗ trợ camera — hãy dùng “Chụp bằng camera máy”', 4000); return; }
+  $('btnStart').disabled = true; $('btnStart').textContent = 'Đang bật…';
+  try{
+    await getLive().start({ deviceId: deviceId || settings.camId || undefined, res: settings.res || '1440', zoom: settings.zoom });
+    camOn = true;
+    $('camIdle').classList.add('hide');
+    ['guide','camStatus','camInfo','camTools'].forEach(id => $(id).classList.remove('hide'));
+    $('btnStart').classList.add('hide'); $('btnStop').classList.remove('hide');
+    setStatus('ok');
+    fillCameras();
+  }catch(e){
+    const n = e && e.name;
+    toast(n === 'NotAllowedError' ? 'Bạn chưa cho phép dùng camera' : 'Không mở được camera: ' + (e && e.message ? e.message : e), 4000);
+    if (deviceId || settings.camId){ settings.camId = ''; LS.set('cccd.settings', settings); }
+  }
+  $('btnStart').disabled = false; $('btnStart').textContent = 'Bật camera';
+}
+async function stopCam(){
+  if (live) live.stop();
+  camOn = false;
+  ['guide','camStatus','camInfo','camTools','camTools2','btnShot'].forEach(id => $(id).classList.add('hide'));
+  $('camIdle').classList.remove('hide');
+  $('btnStop').classList.add('hide'); $('btnStart').classList.remove('hide');
+}
+async function applyZoom(v){
+  if (!live || !camOn) return;
+  const z = await live.setZoom(v);
+  $('zoom').value = z; $('zoomVal').textContent = (+z).toFixed(1) + '×';
+  settings.zoom = z; LS.set('cccd.settings', settings);
+}
+async function scanImage(file, source){
+  if (!file) return;
+  if (camOn) await stopCam();
+  const bar = $('imgProgress'), fill = bar.firstElementChild;
+  bar.classList.remove('hide'); fill.style.width = '2%';
+  toast('Đang tìm mã QR trong ảnh…', 1500);
+  try{
+    const text = await QRScan.decodeImage(file, p => { fill.style.width = Math.round(p * 100) + '%'; });
+    if (text) handleScan(text, source);
+    else toast('Không tìm thấy QR. Chụp lại gần hơn (vẫn nét), đủ sáng, không loá.', 4000);
+  }catch(e){
+    toast(e && e.code === 'HEIC'
+      ? 'Ảnh HEIC của iPhone không mở được trên trình duyệt này. Trên iPhone: Cài đặt → Camera → Định dạng → “Tương thích nhất”, hoặc dùng nút “Chụp bằng camera máy”.'
+      : 'Không đọc được ảnh', 6000);
+  }
+  bar.classList.add('hide');
+}
+async function takeShot(){
+  if (!live || !camOn) return;
+  const b = $('btnShot'); b.disabled = true; b.textContent = 'Đang chụp…';
+  const bar = $('imgProgress'), fill = bar.firstElementChild; bar.classList.remove('hide'); fill.style.width = '2%';
+  try{
+    const text = await live.takePhoto(p => { fill.style.width = Math.round(p * 100) + '%'; });
+    if (text){ await stopCam(); handleScan(text, 'Camera'); }
+    else toast('Ảnh chụp chưa đọc được — thử chạm lấy nét rồi chụp lại', 3500);
+  }catch(e){ toast('Không chụp được', 3000); }
+  bar.classList.add('hide'); b.disabled = false; b.textContent = 'Chụp nét';
+}
+
+/* ---------- Dán tay ---------- */
+function parsePaste(){
+  const txt = $('pasteBox').value.trim();
+  if (!txt){ toast('Chưa có nội dung'); return; }
+  const lines = txt.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const qrLines = lines.filter(l => parseCCCD(l).ok);
+  // Nhiều dòng đều là QR CCCD → xử lý hàng loạt; còn lại coi là một bản ghi
+  if (qrLines.length > 1 && qrLines.length === lines.length){
+    const recs = lines.map(l => makeRecord(l, 'Dán tay'));
+    recs.slice().reverse().forEach(addToHistory);
+    showMulti(recs);
+  } else {
+    const rec = makeRecord(lines.length === 1 ? lines[0] : txt, 'Dán tay');
+    addToHistory(rec); showResult(rec);
+  }
+}
+let multi = [];
+function showMulti(recs){
+  multi = recs;
+  $('result').classList.add('hide'); $('multi').classList.remove('hide');
+  $('multiTitle').textContent = `${recs.length} bản ghi`;
+  $('multiList').innerHTML = recs.map(r => `<li><div class="m"><div class="n">${esc(r.data.hoTen || '(không rõ tên)')}</div><div class="s">${esc(r.data.cccd)} · ${esc(r.data.ngaySinh)}</div></div></li>`).join('');
+  $('multiNote').textContent = '';
+  $('multi').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+/* ---------- Lịch sử ---------- */
+function renderHistory(){
+  $('histCount').textContent = history.length;
+  const ul = $('histList');
+  if (!history.length){ ul.innerHTML = '<li class="empty">Chưa có dữ liệu</li>'; return; }
+  ul.innerHTML = history.slice(0, 300).map(r => `
+    <li data-id="${r.id}">
+      <div class="m">
+        <div class="n">${esc(r.ok ? r.data.hoTen : (r.raw.slice(0,40) || '(trống)'))}</div>
+        <div class="s">${esc(r.ok ? r.data.cccd : 'Nội dung khác')} · ${esc(r.time)} · ${esc(r.source)}</div>
+      </div>
+      ${r.saved ? '<span class="pill">Đã lưu</span>' : '<span class="pill warn">Chưa lưu</span>'}
+      <button class="copy" data-act="copy">Copy</button>
+    </li>`).join('');
+}
+$('histList').addEventListener('click', e => {
+  const li = e.target.closest('li[data-id]'); if (!li) return;
+  const rec = history.find(h => h.id === li.dataset.id); if (!rec) return;
+  if (e.target.dataset.act === 'copy'){ copy(rowTSV(rec), 'Đã copy dòng'); return; }
+  switchTab(rec.source === 'Dán tay' ? 'paste' : 'scan'); showResult(rec);
+});
+
+/* ---------- Xuất ---------- */
+const allTSV = recs => [HEADERS.join('\t'), ...recs.map(rowTSV)].join('\n');
+function downloadCSV(recs){
+  const q = v => '"' + String(v ?? '').replace(/"/g,'""') + '"';
+  const csv = '﻿' + [HEADERS, ...recs.map(toRow)].map(r => r.map(q).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  a.download = `cccd_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+async function saveMany(recs, noteEl, btn){
+  if (!recs.length){ toast('Không có mục nào cần gửi'); return; }
+  btn.disabled = true; const old = btn.textContent; btn.textContent = 'Đang gửi…';
+  try{
+    const r = await sendToSheet(recs);
+    recs.forEach(x => { x.saved = true; x.unconfirmed = !!r.unconfirmed; const i = history.findIndex(h => h.id === x.id); if (i >= 0) history[i] = x; });
+    saveHistory(); renderHistory();
+    noteEl.innerHTML = `<span class="pill">Đã lưu ${recs.length} dòng</span>`; toast('Đã lưu vào Google Sheet');
+  }catch(e){ noteEl.innerHTML = `<span class="pill err">Lỗi</span> ${esc(e.message)}`; toast(e.message, 3500); }
+  btn.disabled = false; btn.textContent = old;
+}
+
+/* ---------- Tabs ---------- */
+function switchTab(name){
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  ['scan','paste','history','settings'].forEach(t => $('tab-' + t).classList.toggle('hide', t !== name));
+  const showRes = name === 'scan' || name === 'paste';
+  if (!showRes){ $('result').classList.add('hide'); $('multi').classList.add('hide'); }
+  if (name !== 'scan') stopCam();
+  if (name === 'settings' && window.QRScan) showDiag();
+}
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+/* ---------- Sự kiện ---------- */
+$('btnStart').onclick = () => startCam();
+$('btnStop').onclick = stopCam;
+$('btnShot').onclick = takeShot;
+$('btnFile').onclick = () => $('fileInput').click();
+$('btnCapture').onclick = () => $('captureInput').click();
+$('fileInput').onchange = e => { scanImage(e.target.files[0], 'Ảnh'); e.target.value = ''; };
+$('captureInput').onchange = e => { scanImage(e.target.files[0], 'Ảnh chụp'); e.target.value = ''; };
+$('zoom').oninput = e => applyZoom(e.target.value);
+$('zoomIn').onclick = () => applyZoom(+$('zoom').value + 0.5);
+$('zoomOut').onclick = () => applyZoom(+$('zoom').value - 0.5);
+$('btnTorch').onclick = async () => { if (!live) return; const on = await live.setTorch(!live.torchOn); $('btnTorch').classList.toggle('on', on); };
+$('camSelect').onchange = e => { settings.camId = e.target.value; settings.zoom = null; LS.set('cccd.settings', settings); startCam(e.target.value); };
+// Chạm để lấy nét
+$('reader').addEventListener('click', e => {
+  if (!camOn || !live) return;
+  const r = $('reader').getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const ring = document.createElement('div'); ring.className = 'focusring'; ring.style.left = x + 'px'; ring.style.top = y + 'px';
+  $('reader').appendChild(ring); setTimeout(() => ring.remove(), 900);
+  live.focusAt(x / r.width, y / r.height);
+});
+// Chụm hai ngón để zoom
+(() => {
+  let d0 = 0, z0 = 1;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  $('reader').addEventListener('touchstart', e => { if (e.touches.length === 2){ d0 = dist(e.touches); z0 = +$('zoom').value; } }, { passive: true });
+  $('reader').addEventListener('touchmove', e => { if (e.touches.length === 2 && d0){ e.preventDefault(); applyZoom(z0 * dist(e.touches) / d0); } }, { passive: false });
+  $('reader').addEventListener('touchend', () => { d0 = 0; });
+})();
+document.addEventListener('visibilitychange', () => { if (document.hidden && camOn) stopCam(); });
+$('btnParse').onclick = parsePaste;
+$('btnPasteClip').onclick = async () => {
+  try{ $('pasteBox').value = await navigator.clipboard.readText(); toast('Đã dán'); }
+  catch(e){ toast('Trình duyệt không cho đọc bộ nhớ — hãy nhấn giữ ô và chọn Dán', 3000); }
+};
+$('btnCopyRow').onclick = () => current && copy(rowTSV(current), 'Đã copy — dán vào Google Sheet');
+$('btnCopyText').onclick = () => current && copy(FIELDS.filter(([k]) => current.data[k]).map(([k,l]) => `${l}: ${current.data[k]}`).join('\n'), 'Đã copy văn bản');
+$('btnCopyRaw').onclick = () => current && copy(current.raw, 'Đã copy chuỗi gốc');
+$('btnSave').onclick = saveCurrent;
+$('btnNext').onclick = () => { $('result').classList.add('hide'); current = null;
+  if (!$('tab-paste').classList.contains('hide')){ $('pasteBox').value=''; $('pasteBox').focus(); } else startCam(); };
+$('btnMultiCopy').onclick = () => copy(multi.map(rowTSV).join('\n'), `Đã copy ${multi.length} dòng`);
+$('btnMultiSave').onclick = () => saveMany(multi, $('multiNote'), $('btnMultiSave'));
+$('btnHistCopy').onclick = () => history.length ? copy(allTSV(history.slice().reverse()), `Đã copy ${history.length} dòng`) : toast('Chưa có dữ liệu');
+$('btnHistCsv').onclick = () => history.length ? downloadCSV(history.slice().reverse()) : toast('Chưa có dữ liệu');
+$('btnHistResend').onclick = e => saveMany(history.filter(h => !h.saved).reverse(), { set innerHTML(v){ toast(v.replace(/<[^>]+>/g,''), 3000); } }, e.currentTarget);
+$('btnHistClear').onclick = () => { if (confirm('Xoá toàn bộ lịch sử trên máy này?')){ history = []; saveHistory(); renderHistory(); toast('Đã xoá'); } };
+
+function loadSettingsUI(){
+  $('camRes').value = settings.res || '1440';
+  $('autoSave').checked = settings.autoSave; $('beep').checked = settings.beep; $('dupWarn').checked = settings.dupWarn;
+}
+function readSettingsUI(){
+  settings.res = $('camRes').value;
+  settings.autoSave = $('autoSave').checked; settings.beep = $('beep').checked; settings.dupWarn = $('dupWarn').checked;
+  LS.set('cccd.settings', settings); updateBadge();
+}
+$('btnSaveSettings').onclick = () => {
+  readSettingsUI(); toast('Đã lưu cài đặt');
+};
+$('btnTest').onclick = async () => {
+  const n = $('testNote');
+  if (!SHEET_ON){ n.innerHTML = '<span class="pill err">Chưa cấu hình</span> Quản trị cần điền SHEET_URL trong config.js'; return; }
+  n.textContent = 'Đang kiểm tra…';
+  try{
+    // "ping" chỉ kiểm tra kết nối + mã bảo mật, KHÔNG ghi dòng nào vào Sheet
+    const res = await fetch(SHEET_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify({ token: SHEET_KEY, action:'ping' }), redirect:'follow' });
+    const j = JSON.parse(await res.text());
+    n.innerHTML = j.ok ? '<span class="pill">Kết nối tốt</span> Sẵn sàng lưu vào Google Sheet.' : `<span class="pill err">Lỗi</span> ${esc(j.error || 'không rõ')}`;
+  }catch(e){ n.innerHTML = '<span class="pill err">Lỗi</span> Không kết nối được Google Sheet. Kiểm tra mạng hoặc liên hệ quản trị.'; }
+};
+
+// Cho phép dán thẳng (Ctrl+V) ở tab Quét
+document.addEventListener('paste', e => {
+  if ($('tab-scan').classList.contains('hide') || /input|textarea/i.test(document.activeElement.tagName)) return;
+  const t = (e.clipboardData || window.clipboardData).getData('text'); if (t && t.trim()) handleScan(t, 'Dán tay');
+});
+
+loadSettingsUI(); updateBadge(); renderHistory();
+if (window.QRScan){
+  $('appVer').textContent = 'v' + QRScan.VERSION;
+  QRScan.loadZW(); // tải sẵn bộ giải mã mạnh để lần quét đầu không phải chờ
+}
+const showDiag = () => { $('diagOut').textContent = window.QRScan ? QRScan.report() : 'Không tải được scanner.js'; };
+$('btnDiag').onclick = showDiag;
+$('btnDiagCopy').onclick = () => { showDiag(); copy($('diagOut').textContent, 'Đã copy chẩn đoán'); };
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+window.__parseCCCD = parseCCCD; // để kiểm thử
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "Quét QR Căn cước",
+  "short_name": "Quét CCCD",
+  "description": "Quét QR Căn cước — © 2026 Thanh Nguyen",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f5",
+  "theme_color": "#0f6b45",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

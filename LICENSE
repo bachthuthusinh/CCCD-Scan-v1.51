@@ -1,0 +1,12 @@
+Copyright (c) 2026 Thanh Nguyen. All rights reserved.
+Bản quyền © 2026 Thanh Nguyen. Bảo lưu mọi quyền.
+
+Phần mềm "Quét QR Căn cước" (bao gồm index.html, scanner.js, config.js, sw.js,
+manifest.webmanifest, icon.svg và apps-script/Code.gs) thuộc quyền sở hữu của
+Thanh Nguyen. Không được sao chép, chỉnh sửa, phân phối hoặc sử dụng cho mục đích
+thương mại khi chưa có sự đồng ý bằng văn bản của chủ sở hữu.
+
+Thư viện bên thứ ba trong thư mục vendor/ giữ nguyên giấy phép gốc của chúng:
+  - html5-qrcode (Apache License 2.0) — vendor/html5-qrcode.LICENSE
+  - jsQR (Apache License 2.0) — vendor/jsQR.LICENSE
+  - zxing-wasm (tải từ jsDelivr khi chạy; MIT License)
